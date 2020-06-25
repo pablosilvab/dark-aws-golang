@@ -19,6 +19,9 @@ type ErrorResponse struct {
 }
 
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+
+	log.Println(request.Body)
+
 	bodyRequest := BodyRequest{}
 
 	err := json.Unmarshal([]byte(request.Body), &bodyRequest)
