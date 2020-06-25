@@ -21,4 +21,11 @@ functions:
       - http:
           path: hello
           method: get
-  
+
+  create:
+    handler: bin/create 
+    events:
+      - http:
+          path: character 
+          method: post
+          cors: true
