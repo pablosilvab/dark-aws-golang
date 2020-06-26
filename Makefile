@@ -3,6 +3,7 @@
 build:
 	env GOOS=linux go build -ldflags="-s -w" -o bin/hello hello/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/create create/main.go
+	env GOOS=linux go build -ldflags="-s -w" -o bin/getAll getAll/main.go
 
 clean:
 	rm -rf ./bin

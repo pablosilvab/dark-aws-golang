@@ -11,11 +11,12 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"gopkg.in/mgo.v2/bson"
 )
 
-type CharacterRequest struct {
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
+type Character struct {
+	FirstName string `json:"firstName" bson:"firstname,omitempty"`
+	LastName  string `json:"lastName" bson:"lastname,omitempty"`
 }
 
 type ErrorResponse struct {
@@ -24,14 +25,7 @@ type ErrorResponse struct {
 }
 
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	newCharacter := CharacterRequest{}
-	log.Println("Create Function....")
-	log.Println(request.Body)
-
-	err := json.Unmarshal([]byte(request.Body), &newCharacter)
-	if err != nil {
-		return events.APIGatewayProxyResponse{Body: string(buildResponse("Petición errónea", -1)), StatusCode: http.StatusBadRequest}, nil
-	}
+	log.Println("GetAll Function....")
 
 	db, err := DBConnect()
 
@@ -39,17 +33,35 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{Body: string(buildResponse("Error al conectarse a base de datos", -1)), StatusCode: http.StatusInternalServerError}, nil
 	}
 	collection := db.Collection("characters")
-	result, err := collection.InsertOne(context.TODO(), newCharacter)
 
+	var characters []*Character
+
+	cur, err := collection.Find(context.TODO(), bson.M{})
 	if err != nil {
-		return events.APIGatewayProxyResponse{Body: string(buildResponse("Error al ingresar registro", -1)), StatusCode: http.StatusInternalServerError}, nil
+		log.Fatal(err)
 	}
 
-	response, err := json.Marshal(result)
+	defer cur.Close(context.TODO())
+
+	for cur.Next(context.TODO()) {
+		var character Character
+		err := cur.Decode(&character)
+		if err != nil {
+			log.Fatal(err)
+		}
+		characters = append(characters, &character)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	response, err := json.Marshal(characters)
 	if err != nil {
 		return events.APIGatewayProxyResponse{Body: string(buildResponse("Error interno", -1)), StatusCode: http.StatusInternalServerError}, nil
 	}
-	return events.APIGatewayProxyResponse{Body: string(response), StatusCode: http.StatusCreated}, nil
+
+	return events.APIGatewayProxyResponse{Body: string(response), StatusCode: http.StatusOK}, nil
 }
 
 func buildResponse(message string, code int) []byte {
